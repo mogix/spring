@@ -177,7 +177,16 @@ module Spring
         IGNORE_SIGNALS.each { |sig| trap(sig, "DEFAULT") }
         trap("TERM", "DEFAULT")
 
-        unless Spring.quiet
+        ARGV.replace(args)
+        $0 = command.exec_name
+
+        # Delete all env vars which are unchanged from before Spring started
+        original_env.each { |k, v| ENV.delete k if ENV[k] == v }
+
+        # Load in the current env vars, except those which *were* changed when Spring started
+        env.each { |k, v| ENV[k] ||= v }
+
+        unless Spring.quiet || ENV["SPRING_QUIET"].present? then
           STDERR.puts "Running via Spring preloader in process #{Process.pid}"
 
           if Rails.env.production?
@@ -188,15 +197,6 @@ module Spring
                         "`bundle install --without development test` in production"
           end
         end
-
-        ARGV.replace(args)
-        $0 = command.exec_name
-
-        # Delete all env vars which are unchanged from before Spring started
-        original_env.each { |k, v| ENV.delete k if ENV[k] == v }
-
-        # Load in the current env vars, except those which *were* changed when Spring started
-        env.each { |k, v| ENV[k] ||= v }
 
         # requiring is faster, so if config.cache_classes was true in
         # the environment's config file, then we can respect that from
