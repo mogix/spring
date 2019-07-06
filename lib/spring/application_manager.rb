@@ -101,12 +101,26 @@ module Spring
             "SPRING_ORIGINAL_ENV" => JSON.dump(Spring::ORIGINAL_ENV),
             "SPRING_PRELOAD"      => preload ? "1" : "0"
           },
-          "ruby",
-          "-I", File.expand_path("../..", $LOADED_FEATURES.grep(/bundler\/setup\.rb$/).first),
-          "-I", File.expand_path("../..", __FILE__),
-          "-e", "require 'spring/application/boot'",
+          *(
+            if ENV.key?("SPRING_CHILD_PROF") then
+              [
+                "ruby-prof",
+                "-p", "graph_html",
+                "-s", "self",
+                "-f", File.expand_path("log/profile.html", Spring.application_root_path),
+                File.expand_path("application/boot_with_prof.rb", __dir__)
+              ]
+            else
+              [
+                "ruby",
+                "-I", File.expand_path("../..", $LOADED_FEATURES.grep(%r{/bundler/setup\.rb$}).first),
+                "-I", File.expand_path("../..", __FILE__),
+                "-e", "require 'spring/application/boot'"
+              ]
+            end
+          ),
           3 => child_socket,
-          4 => spring_env.log_file,
+          4 => spring_env.log_file
         )
       end
 
