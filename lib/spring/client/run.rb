@@ -1,13 +1,17 @@
 require "rbconfig"
 require "socket"
 require "bundler"
+require "timeout"
 
 module Spring
   module Client
     class Run < Command
+      include Timeout
+
       FORWARDED_SIGNALS = %w(INT QUIT USR1 USR2 INFO WINCH) & Signal.list.keys
       CONNECT_TIMEOUT   = 1
       BOOT_TIMEOUT      = 20
+      SEND_TIMEOUT      = 5
 
       attr_reader :server
 
@@ -148,7 +152,13 @@ module Spring
         application.send_io STDERR
         application.send_io STDIN
 
-        send_json application, "args" => args, "env" => ENV.to_hash
+        begin
+          timeout(SEND_TIMEOUT) do
+            send_json application, "args" => args, "env" => ENV.to_hash
+          end
+        rescue Timeout::Error
+          log "[client] timeout sending json to application"
+        end
 
         pid = server.gets
         pid = pid.chomp if pid
