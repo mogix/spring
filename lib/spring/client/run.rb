@@ -11,7 +11,7 @@ module Spring
       FORWARDED_SIGNALS = %w(INT QUIT USR1 USR2 INFO WINCH) & Signal.list.keys
       CONNECT_TIMEOUT   = 1
       BOOT_TIMEOUT      = 20
-      SEND_TIMEOUT      = 5
+      PRELOAD_TIMEOUT   = 20
 
       attr_reader :server
 
@@ -153,12 +153,14 @@ module Spring
         application.send_io STDIN
 
         begin
-          timeout(SEND_TIMEOUT) do
-            send_json application, "args" => args, "env" => ENV.to_hash
+          timeout(PRELOAD_TIMEOUT) do
+            application.gets
           end
         rescue Timeout::Error
-          log "[client] timeout sending json to application"
+          warn "[client] timeout application preloading"
         end
+
+        send_json application, "args" => args, "env" => ENV.to_hash
 
         pid = server.gets
         pid = pid.chomp if pid

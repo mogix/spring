@@ -156,6 +156,8 @@ module Spring
 
       preload unless preloaded?
 
+      client.puts
+
       args, env = JSON.load(client.read(client.gets.to_i)).values_at("args", "env")
       command   = Spring.command(args.shift)
 
